@@ -1,0 +1,36 @@
+<div class="form-card" data-booking data-reveal>
+      <div class="form-card__head">
+        <h3>Check Alex's availability</h3>
+        <span class="pulse-dot">Replies within one business day</span>
+      </div>
+      <form novalidate aria-label="Check Alex's availability">
+        <div class="field-row">
+          <div class="field">
+            <input id="{{fid}}-name" name="name" type="text" placeholder=" " autocomplete="name" required>
+            <label for="{{fid}}-name">Full name *</label>
+            <p class="field__err">Please enter your name.</p>
+          </div>
+          <div class="field">
+            <input id="{{fid}}-email" name="email" type="email" placeholder=" " autocomplete="email" required>
+            <label for="{{fid}}-email">Email address *</label>
+            <p class="field__err">Please enter a valid email address.</p>
+          </div>
+        </div>
+        <div class="field">
+          <input id="{{fid}}-date" name="date" type="text" placeholder=" ">
+          <label for="{{fid}}-date">Event date / timeframe</label>
+        </div>
+        <div class="field">
+          <textarea id="{{fid}}-msg" name="message" placeholder=" " required></textarea>
+          <label for="{{fid}}-msg">How can Alex help? *</label>
+          <p class="field__err">Tell us a little about your event.</p>
+        </div>
+        <button class="btn" type="submit">Check availability <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+        <p class="form-foot">Prefer email? <a href="mailto:booking@alexgoryachev.com">booking@alexgoryachev.com</a></p>
+      </form>
+      <div class="form-success" tabindex="-1" aria-live="polite">
+        <div class="check"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3>Thank you<span data-first-name></span>.</h3>
+        <p class="muted">Alex will reply within one business day with availability and a fee range.</p>
+      </div>
+    </div>

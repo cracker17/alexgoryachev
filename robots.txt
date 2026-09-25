@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://alexgoryachev.vercel.app/sitemap.xml

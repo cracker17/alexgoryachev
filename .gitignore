@@ -1,0 +1,6 @@
+# downloaded original photos + debug sheets (crop.py re-fetches them)
+_source/.cache/
+__pycache__/
+.DS_Store
+Thumbs.db
+.vercel
