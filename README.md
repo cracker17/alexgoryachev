@@ -2,7 +2,7 @@
 
 Static site (HTML + CSS + GSAP), deployed on Vercel. No build step is needed to deploy: the HTML files in the root are the site.
 
-Pages: `speaking`, `enterprise`, `higher-education`, `member-organizations`, `about`, `work-with-alex` (`/` redirects to `/speaking` until a Home page exists).
+Pages: `speaking`, `enterprise`, `higher-education`, `member-organizations`, `about`, `work-with-alex` (`/` serves the Speaking page via a Vercel rewrite until a Home page exists).
 
 ## Editing
 Page content lives in `_source/pages/`; the shared header, footer and booking form live in `_source/partials/`. After editing, rebuild the root HTML files:

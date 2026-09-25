@@ -620,6 +620,11 @@
     if (canGlide) gsap.registerPlugin(ScrollToPlugin);
     const offset = () => ($(".site-header")?.offsetHeight || 70) + 12;
     const norm = (p) => (p.replace(/\.html$/, "").replace(/\/index$/, "").replace(/\/+$/, "") || "/");
+    // "/" serves the Speaking page (Vercel rewrite): treat it as the page its canonical names
+    const here = () => {
+      const c = $('link[rel="canonical"]');
+      return norm(location.pathname) === "/" && c ? norm(new URL(c.href).pathname) : norm(location.pathname);
+    };
 
     const resolve = (hash) => {
       if (!hash || hash === "#") return null;
@@ -652,7 +657,7 @@
       const a = e.target.closest('a[href*="#"]');
       if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
       const url = new URL(a.getAttribute("href"), location.href);
-      if (url.origin !== location.origin || norm(url.pathname) !== norm(location.pathname)) return;   // other page: let it load
+      if (url.origin !== location.origin || norm(url.pathname) !== here()) return;   // other page: let it load
       const t = resolve(url.hash);
       if (!t) return;
       e.preventDefault();
