@@ -277,14 +277,13 @@
       const fromHash = () => {
         const h = location.hash.slice(1);
         const i = btns.findIndex((b) => b.dataset.hash === h);
-        if (i > -1) { select(i, false, true); setTimeout(() => wrap.scrollIntoView({ behavior: reduced ? "auto" : "smooth" }), 60); }
+        if (i > -1) select(i, false, true);
       };
       window.addEventListener("hashchange", fromHash);
       window.addEventListener("resize", () => movePill(btns.find((b) => b.getAttribute("aria-selected") === "true")));
       document.fonts && document.fonts.ready.then(() => movePill(btns.find((b) => b.getAttribute("aria-selected") === "true")));
       const initial = btns.findIndex((b) => b.dataset.hash === location.hash.slice(1));
       select(initial > -1 ? initial : 0, false, true);
-      if (initial > -1) setTimeout(() => wrap.scrollIntoView(), 50);
       if (list) list.setAttribute("aria-orientation", "horizontal");
     });
   }
@@ -612,6 +611,69 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* Anchor links: eased glide to the target (fixed-header offset), then  */
+  /* the landing heading rises in. Also handles tab hashes and arrivals   */
+  /* from other pages (e.g. enterprise → speaking.html#workshops).        */
+  /* ------------------------------------------------------------------ */
+  function initAnchors() {
+    const canGlide = hasGSAP && window.ScrollToPlugin && !reduced;
+    if (canGlide) gsap.registerPlugin(ScrollToPlugin);
+    const offset = () => ($(".site-header")?.offsetHeight || 70) + 12;
+    const norm = (p) => (p.replace(/\.html$/, "").replace(/\/index$/, "").replace(/\/+$/, "") || "/");
+
+    const resolve = (hash) => {
+      if (!hash || hash === "#") return null;
+      const id = decodeURIComponent(hash.slice(1));
+      if (id === "main") return { el: $("#main") || document.body, top: true };
+      const tab = $$('[role="tab"][data-hash]').find((b) => b.dataset.hash === id);
+      if (tab) return { el: tab.closest("[data-tabs]"), tab, heading: tab.closest("section")?.querySelector("h2") };
+      const el = document.getElementById(id);
+      return el ? { el } : null;
+    };
+
+    const land = (t) => {
+      const h = t.heading || (t.el.matches?.("h1,h2,h3") ? t.el : t.el.querySelector?.("h2, h1, h3"));
+      const eyebrow = h && h.parentElement?.querySelector(".eyebrow");
+      if (canGlide && h) gsap.fromTo([eyebrow, h].filter(Boolean), { y: 26, opacity: .25 }, { y: 0, opacity: 1, duration: .9, stagger: .08, ease: "power3.out", clearProps: "transform,opacity" });
+      // move keyboard focus with the scroll, without a second jump
+      const f = t.top ? $("#main") : t.el;
+      if (f) { if (!f.hasAttribute("tabindex")) f.setAttribute("tabindex", "-1"); f.focus({ preventScroll: true }); }
+    };
+
+    const go = (t) => {
+      if (t.tab && t.tab.getAttribute("aria-selected") !== "true") t.tab.click();
+      const y = t.top ? 0 : Math.max(0, t.el.getBoundingClientRect().top + window.scrollY - offset());
+      if (!canGlide) { window.scrollTo({ top: y, behavior: reduced ? "auto" : "smooth" }); land(t); return; }
+      const dist = Math.abs(y - window.scrollY);
+      gsap.to(window, { scrollTo: { y, autoKill: true }, duration: Math.min(1.6, Math.max(.7, dist / 2200)), ease: "power3.inOut", overwrite: true, onComplete: () => land(t) });
+    };
+
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest('a[href*="#"]');
+      if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === "_blank") return;
+      const url = new URL(a.getAttribute("href"), location.href);
+      if (url.origin !== location.origin || norm(url.pathname) !== norm(location.pathname)) return;   // other page: let it load
+      const t = resolve(url.hash);
+      if (!t) return;
+      e.preventDefault();
+      $$(".nav__item.is-open").forEach((o) => { o.classList.remove("is-open"); $(".nav__link", o)?.setAttribute("aria-expanded", "false"); });
+      if (!t.tab) history.pushState(null, "", url.hash);   // tabs update the hash themselves
+      go(t);
+    });
+    window.addEventListener("popstate", () => { const t = resolve(location.hash); if (t) go(t); });
+
+    // arriving from another page with a hash: start at the top, then glide down once layout/pins are ready
+    const arrival = resolve(location.hash);
+    if (arrival && canGlide) {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      window.scrollTo(0, 0);
+      return (ready) => ready.then(() => setTimeout(() => go(arrival), 350));
+    }
+    if (arrival) return (ready) => ready.then(() => go(arrival));
+    return null;
+  }
+
+  /* ------------------------------------------------------------------ */
   function boot() {
     buildMarquees();
     buildQuotes();
@@ -623,10 +685,11 @@
     initForms();
     initGlow();
     initMarqueeMotion();
-    const start = () => initMotion();
+    const onArrival = initAnchors();
     // wait for web fonts so SplitText measures real line breaks
-    if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]).then(start);
-    else start();
+    const fontsReady = document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]) : Promise.resolve();
+    const motionReady = fontsReady.then(() => initMotion());
+    if (onArrival) onArrival(motionReady);
     const y = $("[data-year]"); if (y) y.textContent = new Date().getFullYear();
   }
 
