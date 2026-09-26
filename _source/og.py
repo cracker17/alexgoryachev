@@ -20,6 +20,10 @@ CARDS = {
     "member-organizations": ("stage", "For associations & member organizations", "Give every member a practical AI playbook."),
     "about": ("leader", "About Alex Goryachev", "Stay above the algorithm — or work for it."),
     "work-with-alex": ("audience", "Book Alex", "Check Alex's availability for your event."),
+    "ai-keynote-speaker-singapore": ("audience", "AI keynote speaker · Singapore & APAC", "An AI keynote for your Singapore event."),
+    "ai-higher-education-speaker-apac": ("edu", "AI in higher education · Singapore & APAC", "Help your university lead AI."),
+    "credentials": ("google", "Alex Goryachev — Credentials", "The receipts behind the experience."),
+    "thank-you": ("leader", "Request received", "You'll hear back within one business day."),
 }
 
 

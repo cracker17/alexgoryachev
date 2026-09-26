@@ -204,6 +204,98 @@ def faq_block(m):
     return '<div class="faq">\n          ' + "\n          ".join(out) + "\n        </div>"
 
 
+# ---------------------------------------------------------------------------
+# Ad landing pages ("layout": "lp")
+# ---------------------------------------------------------------------------
+LP_OPTIONS = {
+    "sg": {"org": ["Corporate / MNC", "Government / agency", "Conference organizer", "Speaking bureau"],
+           "format": ["In person, Singapore", "Virtual", "Not sure yet"]},
+    "he": {"org": ["University", "University system office", "Association / consortium", "Other institution"],
+           "format": ["In person, on campus", "Virtual", "Not sure yet"]},
+}
+
+
+def lp_form(c):
+    """Two-step lead form: step 1 = two one-tap questions (+ optional date), step 2 = contact details."""
+    o = LP_OPTIONS[c]
+
+    def choices(name, opts):
+        return "".join(f'<label class="choice"><input type="radio" name="{name}" value="{html.escape(v)}"><span>{html.escape(v)}</span></label>' for v in opts)
+
+    return f'''<div class="lpf-card" id="lp-form" tabindex="-1">
+          <div class="lpf-card__head">
+            <h2 class="lpf-card__title">Check Alex's availability</h2>
+            <span class="pulse-dot">Replies within one business day</span>
+          </div>
+          <form class="lpf" data-lp-form data-campaign="{c}" novalidate>
+            <div class="lpf__progress" aria-live="polite"><span>Step <b data-step-num>1</b> of 2</span><span class="lpf__bar" aria-hidden="true"><i></i></span></div>
+            <div class="lpf__step" data-step="1">
+              <p class="lpf__q" id="q-org-{c}">Who's booking?</p>
+              <div class="choices" role="radiogroup" aria-labelledby="q-org-{c}" data-group="org_type">{choices("org_type", o["org"])}</div>
+              <p class="lpf__err" data-err="org_type">Choose one to continue.</p>
+              <p class="lpf__q" id="q-fmt-{c}">Format</p>
+              <div class="choices choices--3" role="radiogroup" aria-labelledby="q-fmt-{c}" data-group="format">{choices("format", o["format"])}</div>
+              <p class="lpf__err" data-err="format">Choose one to continue.</p>
+              <div class="field">
+                <input id="lp-{c}-date" name="event_date" type="text" placeholder=" " autocomplete="off">
+                <label for="lp-{c}-date">Event date or timeframe (optional)</label>
+              </div>
+              <input type="hidden" name="program" value="">
+              <p class="lpf__program" data-program-note hidden>Program: <b></b></p>
+              <button class="btn lpf__btn" type="button" data-next>Continue {ARROW_BTN}</button>
+            </div>
+            <div class="lpf__step" data-step="2" hidden>
+              <div class="field">
+                <input id="lp-{c}-name" name="name" type="text" placeholder=" " autocomplete="name" required>
+                <label for="lp-{c}-name">Full name *</label>
+                <p class="field__err">Please enter your name.</p>
+              </div>
+              <div class="field">
+                <input id="lp-{c}-email" name="email" type="email" placeholder=" " autocomplete="email" inputmode="email" required>
+                <label for="lp-{c}-email">Work email *</label>
+                <p class="field__err">Please enter a valid email address.</p>
+                <p class="lpf__hint" data-typo hidden>Did you mean <button type="button"></button>?</p>
+              </div>
+              <div class="field">
+                <input id="lp-{c}-org" name="organization" type="text" placeholder=" " autocomplete="organization" required>
+                <label for="lp-{c}-org">Organization *</label>
+                <p class="field__err">Please enter your organization.</p>
+              </div>
+              <div class="field">
+                <textarea id="lp-{c}-goal" name="goal" placeholder=" " rows="3"></textarea>
+                <label for="lp-{c}-goal">What should your audience walk away with?</label>
+              </div>
+              <input class="lpf__hp" type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true">
+              <div class="lpf__actions">
+                <button class="lpf__back" type="button" data-back>← Back</button>
+                <button class="btn lpf__btn" type="submit" data-submit>Check availability {ARROW_BTN}</button>
+              </div>
+            </div>
+            <p class="lpf__micro">{CHECK}<span>A reply within one business day with availability and a fee range. No obligation.</span></p>
+            <p class="lpf__error" role="alert" hidden></p>
+          </form>
+        </div>'''
+
+
+def quotes_pick(m):
+    return QUOTES.replace('<div class="quotes" data-quotes></div>', f'<div class="quotes" data-quotes="{m.group(1)}"></div>')
+
+
+def clients_row(m):
+    label = {"sg": "Trusted by teams at <b>EDB Singapore</b>, Google, AWS and more",
+             "he": "Trusted by <b>California State University</b>, the UT System and IEEE"}[m.group(1)]
+    return f'''<section class="logos logos--paper" aria-label="Clients">
+      <div class="container"><p class="logos__label">{label}</p></div>
+      <div data-marquee="clients-{m.group(1)}" data-speed="46"></div>
+    </section>'''
+
+
+def lp_links(body):
+    """On landing pages every program CTA stays on the page: glide to the form and pre-select the program."""
+    return re.sub(r'href="work-with-alex\.html\?program=([^"]+)">(?:Ask about this talk|Ask about this format)',
+                  lambda m: f'href="#lp-form" data-program="{html.escape(urllib.parse.unquote(m.group(1)))}">Request this program', body)
+
+
 def build(page):
     src = (HERE / "pages" / page).read_text(encoding="utf-8")
     meta = json.loads(re.match(r"<!--meta(.*?)-->", src, re.S).group(1))
@@ -217,6 +309,10 @@ def build(page):
     body = re.sub(r"\[\[FAQ(.*?)\]\]", faq_block, body, flags=re.S)
     body = re.sub(r"\{\{kn:(\w+)(:featured)?\}\}", lambda m: keynote(m.group(1), bool(m.group(2))), body)
     body = re.sub(r"\{\{form:(\w+)\}\}", lambda m: form(m.group(1)), body)
+    body = re.sub(r"\{\{quotes:([\d,]+)\}\}", quotes_pick, body)
+    body = re.sub(r"\{\{clients:(sg|he)\}\}", clients_row, body)
+    if meta.get("layout") == "lp" and "{{lpform}}" in body:
+        body = body.replace("{{lpform}}", lp_form(meta["campaign"]))
     for k, v in {"{{booking}}": booking, "{{press}}": PRESS, "{{clients}}": CLIENTS, "{{quotes}}": QUOTES,
                  "{{stats}}": STATS, "{{stats_section}}": STATS_SECTION, "{{why}}": WHY_SECTION,
                  "{{arrow}}": ARROW_BTN, "{{arrow_link}}": ARROW, "{{check}}": CHECK}.items():
@@ -240,14 +336,33 @@ def build(page):
             attr = ' aria-current="page"' if key != "serve" else ' data-active'
         header = header.replace("{{cur:%s}}" % key, attr)
 
-    doc = head + header + '\n<main id="main">\n' + body.strip() + "\n</main>\n\n" + P("footer.html")
+    footer = P("footer.html")
+    if meta.get("layout") == "lp":
+        # ad landing page: no site nav, noindex, lead-form script, every CTA stays on the page
+        header = P("lp-header.html").replace("{{logo}}", logo)
+        footer = P("lp-footer.html")
+        head = head.replace('<meta name="robots" content="index, follow, max-image-preview:large">', '<meta name="robots" content="noindex, follow">') \
+                   .replace('<script defer src="assets/js/site.js"></script>', '<script defer src="assets/js/lp.js"></script>\n<script defer src="assets/js/site.js"></script>')
+        body = lp_links(body)
+        if 'id="lp-form"' not in body:   # e.g. the thank-you page: no form to glide to
+            header = header.replace('href="#lp-form" data-magnetic>Check availability', 'href="speaking.html" data-magnetic>Visit the site')
+            footer = re.sub(r'<div class="sticky-cta".*?</a>\s*</div>\s*', "", footer, flags=re.S)
+        head = head.replace("<body>", f'<body class="is-lp" data-campaign="{meta.get("campaign", "")}" data-page="{page.removesuffix(".html")}">', 1)
+    doc = head + header + '\n<main id="main">\n' + body.strip() + "\n</main>\n\n" + footer
     leftover = re.findall(r"\{\{[^}]+\}\}", doc)
     if leftover:
         raise SystemExit(f"{page}: unresolved {leftover}")
     (OUT / page).write_text(doc, encoding="utf-8")
     print(f"built {page}  {len(doc)//1024} KB")
+    return meta
 
 
 if __name__ == "__main__":
+    indexed = []
     for p in sorted((HERE / "pages").glob("*.html")):
-        build(p.name)
+        if build(p.name).get("layout") != "lp":
+            indexed.append(p.stem)
+    # sitemap = indexable pages only (ad landing pages are noindex)
+    urls = "".join(f"  <url><loc>{SITE_URL}/{s}</loc></url>\n" for s in indexed)
+    (OUT / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + urls + "</urlset>\n", encoding="utf-8")
+    print(f"sitemap.xml  {len(indexed)} urls")

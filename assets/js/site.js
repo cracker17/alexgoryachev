@@ -52,6 +52,13 @@
     ["IEEE", "6a04a28d50c15bf9b1394edc_ieee-logo.png"],
   ];
 
+  // curated rows for the ad landing pages (most relevant logos first)
+  const CLIENTS_SG = [CLIENTS_A[5], ["Google", "6a3e0ad7f3f8b5c3e7bf2f5e_google_logo.svg"], ["AWS", "6a3e0a29e6075a01c4bb7244_aws_logo.svg"], CLIENTS_A[3], CLIENTS_A[2],
+    ["Microsoft", "6a04a48f4836552bd6da4392_Microsoft_logo_(2012).svg.webp"], CLIENTS_A[8], CLIENTS_A[1], CLIENTS_A[11], ["Visa", "66e89d551486f5e06ac822b2_Visa.png"], ["Bosch", "6a3e0206454e17c7868da26e_bosch-logo.svg"], CLIENTS_A[7]];
+  const CLIENTS_HE = [["California State University", "6a3e0d3ce6075a01c4bd22b2_csu_logo.svg"], ["University of Texas System", "6a10964fe4c069f0af7990ce_UofTsystem_seal.svg.png"],
+    ["IEEE", "6a04a28d50c15bf9b1394edc_ieee-logo.png"], CLIENTS_A[9], CLIENTS_A[5], ["Google", "6a3e0ad7f3f8b5c3e7bf2f5e_google_logo.svg"], ["Microsoft", "6a04a48f4836552bd6da4392_Microsoft_logo_(2012).svg.webp"],
+    ["AWS", "6a3e0a29e6075a01c4bb7244_aws_logo.svg"], CLIENTS_A[2], ["Rotary", "6a3e09f1f3f8b5c3e7bef40a_rotary_logo.svg"]];
+
   const QUOTES = [
     ["Alex’s keynote was the highlight of the event.", "Amazon Web Services", "6857247daae4ad43b007c73b_aws.png"],
     ["Alex speaks like someone who has actually led transformation at scale — because he has.", "Bosch", "6a04a24b339e9cdc1ee8f768_Bosch_logo.png"],
@@ -76,7 +83,7 @@
   function buildMarquees() {
     $$("[data-marquee]").forEach((el) => {
       const type = el.dataset.marquee;
-      const list = type === "press" ? PRESS : type === "clients-a" ? CLIENTS_A : CLIENTS_B;
+      const list = { press: PRESS, "clients-a": CLIENTS_A, "clients-b": CLIENTS_B, "clients-sg": CLIENTS_SG, "clients-he": CLIENTS_HE }[type] || CLIENTS_B;
       const boxed = type !== "press";
       const items = list.map(([alt, file]) => {
         const img = `<img src="${CDN}${file}" alt="${esc(alt)}" loading="lazy" decoding="async" width="132" height="32">`;
@@ -91,13 +98,16 @@
 
   function buildQuotes() {
     $$("[data-quotes]").forEach((el) => {
-      const cards = QUOTES.map(([q, org, file], i) => `
-        <figure class="quote" id="q-${i}" aria-roledescription="slide" aria-label="${i + 1} of ${QUOTES.length}">
+      // data-quotes="0,5,1" shows just those testimonials, in that order
+      const pick = (el.dataset.quotes || "").split(",").filter((x) => x !== "").map(Number);
+      const list = pick.length ? pick.map((i) => QUOTES[i]).filter(Boolean) : QUOTES;
+      const cards = list.map(([q, org, file], i) => `
+        <figure class="quote" id="q-${i}" aria-roledescription="slide" aria-label="${i + 1} of ${list.length}">
           <div class="quote__mark" aria-hidden="true">“</div>
           <blockquote>${esc(q)}</blockquote>
           <figcaption><span><strong>${esc(org)}</strong>Event client</span></figcaption>
         </figure>`).join("");
-      const dots = QUOTES.map((_, i) => `<button type="button" aria-label="Show testimonial ${i + 1}"></button>`).join("");
+      const dots = list.map((_, i) => `<button type="button" aria-label="Show testimonial ${i + 1}"></button>`).join("");
       el.innerHTML = `
         <div class="quotes__track" tabindex="0" aria-label="Testimonials">${cards}</div>
         <div class="quotes__controls">
@@ -408,8 +418,9 @@
         const others = $$("[data-hero]", hero).filter((e) => e !== title);
         if (title && Split) {
           gsap.set(title, { opacity: 1 });
-          const s = Split.create(title, { type: "lines,words", mask: "lines", linesClass: "split-line" });
-          tl.from(s.words, { yPercent: 110, duration: 1.2, stagger: .045 }, .25);
+          // autoSplit re-splits if the web font lands late, so line breaks always match the real font
+          Split.create(title, { type: "lines,words", mask: "lines", linesClass: "split-line", autoSplit: true,
+            onSplit: (self) => gsap.from(self.words, { yPercent: 110, duration: 1.2, stagger: .045, ease: "power4.out", delay: .35 }) });
         } else if (title) tl.fromTo(title, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1 }, .25);
         tl.fromTo(others, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 1, stagger: .1 }, .7);
         // gentle zoom on scroll (no vertical drift, so his head never slides out of the frame)
@@ -432,8 +443,8 @@
       });
 
       /* --- Generic reveals (batched) --- */
-      gsap.set("[data-reveal]", { y: 48, opacity: 0 });
-      ST.batch("[data-reveal]", {
+      if ($$("[data-reveal]").length) gsap.set("[data-reveal]", { y: 48, opacity: 0 });
+      if ($$("[data-reveal]").length) ST.batch("[data-reveal]", {
         start: "top 90%", once: true,
         onEnter: (els) => gsap.to(els, { y: 0, opacity: 1, duration: 1, stagger: .09, ease: "power3.out", overwrite: true }),
       });
@@ -455,6 +466,9 @@
         el.textContent = formatNum(0, el);
         gsap.to(obj, { v: end, duration: 2.2, ease: "power2.out", scrollTrigger: { trigger: el, start: "top 90%", once: true }, onUpdate: () => (el.textContent = formatNum(obj.v, el)) });
       });
+
+      /* --- Score bars grow from zero when they scroll in --- */
+      $$("[data-bar]").forEach((b) => gsap.from(b, { scaleX: 0, duration: 1.4, ease: "power3.out", scrollTrigger: { trigger: b, start: "top 92%", once: true } }));
 
       /* --- Sticky step lists: activate + rail --- */
       $$(".steps-list").forEach((list) => {
